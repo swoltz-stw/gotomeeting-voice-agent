@@ -112,7 +112,7 @@ def voice():
         "Thank you for calling GoToMeeting customer support. "
         "I'm Alex, and I'm here to help you today. "
         "What can I help you with?",
-        voice="Polly.Joanna"
+        voice="Polly.Amy"
     )
     
     response.append(gather)
@@ -141,7 +141,7 @@ def respond():
         )
         gather.say(
             "I'm sorry, I didn't catch that. Could you please repeat your question?",
-            voice="Polly.Joanna"
+            voice="Polly.Amy"
         )
         response.append(gather)
         return Response(str(response), mimetype="text/xml")
@@ -152,7 +152,7 @@ def respond():
         response.say(
             "You're welcome! Thank you for calling GoToMeeting support. "
             "Have a great day, and happy meeting!",
-            voice="Polly.Joanna"
+            voice="Polly.Amy"
         )
         response.hangup()
         conversations.pop(call_sid, None)
@@ -176,7 +176,7 @@ def respond():
         language="en-US"
     )
     
-    gather.say(ai_response, voice="Polly.Joanna")
+    gather.say(ai_response, voice="Polly.Amy")
     response.append(gather)
     response.redirect("/respond")
     
