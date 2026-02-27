@@ -7,12 +7,17 @@ from flask import Flask, request, Response
 from twilio.twiml.voice_response import VoiceResponse, Gather
 import anthropic
 import os
-import json
 
 app = Flask(__name__)
 
 # Initialize Anthropic client
-client = anthropic.Anthropic(api_key=os.environ.get("ANTHROPIC_API_KEY"))
+api_key = os.environ.get("ANTHROPIC_API_KEY")
+if not api_key:
+    print("WARNING: ANTHROPIC_API_KEY not set!", flush=True)
+else:
+    print(f"API key loaded: {api_key[:20]}...", flush=True)
+
+client = anthropic.Anthropic(api_key=api_key)
 
 # GoToMeeting support system prompt
 SYSTEM_PROMPT = """You are a friendly, knowledgeable customer support agent for GoToMeeting. 
@@ -66,15 +71,18 @@ def get_ai_response(call_sid, user_message):
     # Add user message
     history.append({"role": "user", "content": user_message})
     
+    print(f"Calling Claude API with message: {user_message[:50]}", flush=True)
+    
     # Get Claude's response
     response = client.messages.create(
-        model="claude-sonnet-4-20250514",
+        model="claude-haiku-4-5-20251001",
         max_tokens=300,
         system=SYSTEM_PROMPT,
         messages=history
     )
     
     assistant_message = response.content[0].text
+    print(f"Claude responded: {assistant_message[:50]}", flush=True)
     
     # Add assistant response to history
     history.append({"role": "assistant", "content": assistant_message})
@@ -89,6 +97,7 @@ def get_ai_response(call_sid, user_message):
 @app.route("/voice", methods=["POST"])
 def voice():
     """Handle incoming calls - initial greeting"""
+    print("Incoming call received!", flush=True)
     response = VoiceResponse()
     
     gather = Gather(
@@ -107,8 +116,6 @@ def voice():
     )
     
     response.append(gather)
-    
-    # If no input, redirect back
     response.redirect("/voice")
     
     return Response(str(response), mimetype="text/xml")
@@ -120,10 +127,11 @@ def respond():
     call_sid = request.form.get("CallSid", "unknown")
     speech_result = request.form.get("SpeechResult", "")
     
+    print(f"Speech received: '{speech_result}'", flush=True)
+    
     response = VoiceResponse()
     
     if not speech_result:
-        # Nothing heard, prompt again
         gather = Gather(
             input="speech",
             action="/respond",
@@ -147,7 +155,6 @@ def respond():
             voice="Polly.Joanna"
         )
         response.hangup()
-        # Clean up conversation
         conversations.pop(call_sid, None)
         return Response(str(response), mimetype="text/xml")
     
@@ -155,12 +162,12 @@ def respond():
     try:
         ai_response = get_ai_response(call_sid, speech_result)
     except Exception as e:
+        print(f"ERROR calling Claude API: {type(e).__name__}: {e}", flush=True)
         ai_response = (
             "I apologize, I'm having a brief technical difficulty. "
             "Could you please repeat your question?"
         )
     
-    # Continue conversation
     gather = Gather(
         input="speech",
         action="/respond",
@@ -171,8 +178,6 @@ def respond():
     
     gather.say(ai_response, voice="Polly.Joanna")
     response.append(gather)
-    
-    # If no response after AI speaks, prompt
     response.redirect("/respond")
     
     return Response(str(response), mimetype="text/xml")
